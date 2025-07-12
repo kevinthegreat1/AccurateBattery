@@ -59,7 +59,7 @@ struct BatteryView: View {
         // Round the level to the nearest 25% for the icon.
         let levelPercentage = Int(round(viewModel.level * 100))
         
-        if viewModel.state == "Charging" {
+        if viewModel.state == "Charging" || viewModel.state == "On Power Adapter" {
             return "battery.100.bolt"
         }
         

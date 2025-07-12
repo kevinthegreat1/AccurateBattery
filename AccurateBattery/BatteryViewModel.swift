@@ -66,9 +66,10 @@ final class BatteryViewModel: ObservableObject {
         
         // Use `IORegistryEntryCreateCFProperty` to get the battery properties.
         guard
-            let currentCapacity = IORegistryEntryCreateCFProperty(service, "CurrentCapacity" as CFString, kCFAllocatorDefault, 0)?.takeRetainedValue() as? Int,
-            let maxCapacity = IORegistryEntryCreateCFProperty(service, "MaxCapacity" as CFString, kCFAllocatorDefault, 0)?.takeRetainedValue() as? Int,
+            let currentCapacity = IORegistryEntryCreateCFProperty(service, "AppleRawCurrentCapacity" as CFString, kCFAllocatorDefault, 0)?.takeRetainedValue() as? Int,
+            let maxCapacity = IORegistryEntryCreateCFProperty(service, "AppleRawMaxCapacity" as CFString, kCFAllocatorDefault, 0)?.takeRetainedValue() as? Int,
             let designCapacity = IORegistryEntryCreateCFProperty(service, "DesignCapacity" as CFString, kCFAllocatorDefault, 0)?.takeRetainedValue() as? Int,
+            let externalConencted = IORegistryEntryCreateCFProperty(service, "ExternalConnected" as CFString, kCFAllocatorDefault, 0)?.takeRetainedValue() as? Bool,
             let isCharging = IORegistryEntryCreateCFProperty(service, "IsCharging" as CFString, kCFAllocatorDefault, 0)?.takeRetainedValue() as? Bool,
             let isCharged = IORegistryEntryCreateCFProperty(service, "FullyCharged" as CFString, kCFAllocatorDefault, 0)?.takeRetainedValue() as? Bool
         else {
@@ -89,6 +90,8 @@ final class BatteryViewModel: ObservableObject {
             self.state = "Full"
         } else if isCharging {
             self.state = "Charging"
+        } else if externalConencted {
+            self.state = "On Power Adapter"
         } else {
             self.state = "On Battery"
         }
