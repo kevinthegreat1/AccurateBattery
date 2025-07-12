@@ -1,0 +1,107 @@
+import SwiftUI
+import IOKit
+
+@MainActor
+final class BatteryViewModel: ObservableObject {
+    @Published private(set) var currentCapacity: Int = 0
+    @Published private(set) var maxCapacity: Int = 0
+    @Published private(set) var designCapacity: Int = 0
+    @Published private(set) var level: Float = 0.0
+    @Published private(set) var state: String = "Unknown"
+    // Find the AppleSmartBattery service.
+    private var service: io_service_t = IOServiceGetMatchingService(kIOMainPortDefault, IOServiceMatching("AppleSmartBattery"))
+    // Create a notification port
+    private var notificationPort: IONotificationPortRef? = IONotificationPortCreate(kIOMainPortDefault)
+    private var notification: io_object_t = 0
+    
+    /// Registers for notifications about changes to the AppleSmartBattery service.
+    init() {
+        // Add the notification port to the current run loop.
+        if let port = notificationPort, let runLoopSource = IONotificationPortGetRunLoopSource(port)?.takeRetainedValue() {
+            CFRunLoopAddSource(CFRunLoopGetCurrent(), runLoopSource, .defaultMode)
+        } else {
+            print("Error: Could not create IOKit notification port.")
+            return
+        }
+        
+        // Define a callback closure that IOKit will call when a notification occurs.
+        let callback: IOServiceInterestCallback = { (refCon, service, messageType, messageArgument) in
+            guard let refCon = refCon else { return }
+            
+            // Get the ViewModel instance from the opaque pointer.
+            let viewModel = Unmanaged<BatteryViewModel>.fromOpaque(refCon).takeUnretainedValue()
+            
+            // Trigger an update on the main thread.
+            Task { @MainActor in
+                viewModel.updateBatteryInfo()
+            }
+        }
+        
+        // Register for "general interest" notifications for the battery service.
+        // This will notify us of state changes.
+        let result = IOServiceAddInterestNotification(
+            notificationPort,
+            service,
+            kIOGeneralInterest, // Notification type for state changes.
+            callback,
+            Unmanaged.passUnretained(self).toOpaque(), // Pass self as the `refcon` so we can access it in the callback.
+            &notification
+        )
+        
+        if result != kIOReturnSuccess {
+            print("Error: IOServiceAddInterestNotification failed with result: \(String (cString: mach_error_string(result)))")
+        }
+        
+        // Perform an initial update to populate the UI.
+        updateBatteryInfo()
+    }
+    
+    /// Reads battery properties from the I/O Registry and updates the view model.
+    func updateBatteryInfo() {
+        guard service != 0 else {
+            self.level = 0
+            self.state = "Not Available"
+            return
+        }
+        
+        // Use `IORegistryEntryCreateCFProperty` to get the battery properties.
+        guard
+            let currentCapacity = IORegistryEntryCreateCFProperty(service, "CurrentCapacity" as CFString, kCFAllocatorDefault, 0)?.takeRetainedValue() as? Int,
+            let maxCapacity = IORegistryEntryCreateCFProperty(service, "MaxCapacity" as CFString, kCFAllocatorDefault, 0)?.takeRetainedValue() as? Int,
+            let designCapacity = IORegistryEntryCreateCFProperty(service, "DesignCapacity" as CFString, kCFAllocatorDefault, 0)?.takeRetainedValue() as? Int,
+            let isCharging = IORegistryEntryCreateCFProperty(service, "IsCharging" as CFString, kCFAllocatorDefault, 0)?.takeRetainedValue() as? Bool,
+            let isCharged = IORegistryEntryCreateCFProperty(service, "FullyCharged" as CFString, kCFAllocatorDefault, 0)?.takeRetainedValue() as? Bool
+        else {
+            self.level = 0
+            self.state = "Error Reading Properties"
+            return
+        }
+        
+        self.currentCapacity = currentCapacity
+        self.maxCapacity = maxCapacity
+        self.designCapacity = designCapacity
+        
+        // Calculate the battery level.
+        self.level = max(0.0, min(1.0, Float(currentCapacity) / Float(maxCapacity)))
+        
+        // Determine the battery state.
+        if isCharged {
+            self.state = "Full"
+        } else if isCharging {
+            self.state = "Charging"
+        } else {
+            self.state = "On Battery"
+        }
+    }
+    
+    func shutDown() {
+        if service != 0 {
+            IOObjectRelease(service)
+            service = 0
+        }
+        if notification != 0 {
+            IOObjectRelease(notification)
+            notification = 0
+        }
+    }
+}

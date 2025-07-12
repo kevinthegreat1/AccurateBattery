@@ -6,6 +6,10 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		51BC811D2E225F2D0049534E /* .gitignore in Resources */ = {isa = PBXBuildFile; fileRef = 51BC811C2E225F290049534E /* .gitignore */; };
+/* End PBXBuildFile section */
+
 /* Begin PBXContainerItemProxy section */
 		519E62E82DFC4ECC00E0DC3A /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
@@ -27,6 +31,7 @@
 		519E62D92DFC4ECA00E0DC3A /* AccurateBattery.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = AccurateBattery.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		519E62E72DFC4ECC00E0DC3A /* AccurateBatteryTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = AccurateBatteryTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		519E62F12DFC4ECC00E0DC3A /* AccurateBatteryUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = AccurateBatteryUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		51BC811C2E225F290049534E /* .gitignore */ = {isa = PBXFileReference; lastKnownFileType = text; path = .gitignore; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -75,6 +80,7 @@
 		519E62D02DFC4ECA00E0DC3A = {
 			isa = PBXGroup;
 			children = (
+				51BC811C2E225F290049534E /* .gitignore */,
 				519E62DB2DFC4ECA00E0DC3A /* AccurateBattery */,
 				519E62EA2DFC4ECC00E0DC3A /* AccurateBatteryTests */,
 				519E62F42DFC4ECC00E0DC3A /* AccurateBatteryUITests */,
@@ -212,6 +218,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				51BC811D2E225F2D0049534E /* .gitignore in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
