@@ -11,9 +11,10 @@ struct BatteryView: View {
                 HStack {
                     // An icon that changes based on the battery state.
                     Image(systemName: batteryIconName)
-                        .font(.title)
-                        .frame(width: 40)
-                        .foregroundColor(batteryColor)
+                        .symbolRenderingMode(.hierarchical)
+                        .font(.system(size: 36))
+                        .fontWeight(.light)
+                        .foregroundStyle(batteryColor)
                     
                     VStack(alignment: .leading) {
                         // Display the state (e.g., "Charging", "Unplugged").
@@ -48,7 +49,7 @@ struct BatteryView: View {
             .padding(.vertical, 8)
         }
         .padding()
-        .frame(width: 280) // Give the view a fixed size
+        .frame(width: 300) // Give the view a fixed size
         .onDisappear {
             viewModel.shutDown()
         }
@@ -59,7 +60,7 @@ struct BatteryView: View {
         // Round the level to the nearest 25% for the icon.
         let levelPercentage = Int(round(viewModel.level * 100))
         
-        if viewModel.state == "Charging" || viewModel.state == "On Power Adapter" {
+        if viewModel.isCharging || viewModel.externalConnected {
             return "battery.100.bolt"
         }
         
@@ -80,10 +81,13 @@ struct BatteryView: View {
     
     /// A computed property to determine the color of the icon and progress bar.
     private var batteryColor: Color {
-        if viewModel.state == "Charging" || viewModel.state == "Full" {
+        if viewModel.isCharging {
             return .green
         }
-        if viewModel.level <= 0.2 {
+        if viewModel.externalConnected {
+            return .blue
+        }
+        if viewModel.level <= 0.1 {
             return .red
         }
         return .primary

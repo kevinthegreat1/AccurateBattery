@@ -8,6 +8,9 @@ final class BatteryViewModel: ObservableObject {
     @Published private(set) var designCapacity: Int = 0
     @Published private(set) var level: Float = 0.0
     @Published private(set) var state: String = "Unknown"
+    @Published private(set) var externalConnected: Bool = false
+    @Published private(set) var isCharging: Bool = false
+    @Published private(set) var fullyCharged: Bool = false
     // Find the AppleSmartBattery service.
     private var service: io_service_t = IOServiceGetMatchingService(kIOMainPortDefault, IOServiceMatching("AppleSmartBattery"))
     // Create a notification port
@@ -71,7 +74,7 @@ final class BatteryViewModel: ObservableObject {
             let designCapacity = IORegistryEntryCreateCFProperty(service, "DesignCapacity" as CFString, kCFAllocatorDefault, 0)?.takeRetainedValue() as? Int,
             let externalConencted = IORegistryEntryCreateCFProperty(service, "ExternalConnected" as CFString, kCFAllocatorDefault, 0)?.takeRetainedValue() as? Bool,
             let isCharging = IORegistryEntryCreateCFProperty(service, "IsCharging" as CFString, kCFAllocatorDefault, 0)?.takeRetainedValue() as? Bool,
-            let isCharged = IORegistryEntryCreateCFProperty(service, "FullyCharged" as CFString, kCFAllocatorDefault, 0)?.takeRetainedValue() as? Bool
+            let fullyCharged = IORegistryEntryCreateCFProperty(service, "FullyCharged" as CFString, kCFAllocatorDefault, 0)?.takeRetainedValue() as? Bool
         else {
             self.level = 0
             self.state = "Error Reading Properties"
@@ -85,8 +88,12 @@ final class BatteryViewModel: ObservableObject {
         // Calculate the battery level.
         self.level = max(0.0, min(1.0, Float(currentCapacity) / Float(maxCapacity)))
         
+        self.externalConnected = externalConencted
+        self.isCharging = isCharging
+        self.fullyCharged = fullyCharged
+        
         // Determine the battery state.
-        if isCharged {
+        if fullyCharged {
             self.state = "Full"
         } else if isCharging {
             self.state = "Charging"
