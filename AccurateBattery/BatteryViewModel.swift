@@ -11,6 +11,8 @@ final class BatteryViewModel: ObservableObject {
     @Published private(set) var externalConnected: Bool = false
     @Published private(set) var isCharging: Bool = false
     @Published private(set) var fullyCharged: Bool = false
+    @Published var capacities: [CapacityEntry] = []
+    
     // Find the AppleSmartBattery service.
     private var service: io_service_t = IOServiceGetMatchingService(kIOMainPortDefault, IOServiceMatching("AppleSmartBattery"))
     // Create a notification port
@@ -102,6 +104,8 @@ final class BatteryViewModel: ObservableObject {
         } else {
             self.state = "On Battery"
         }
+        
+        capacities.append(.init(capacity: currentCapacity))
     }
     
     func shutDown() {
@@ -113,5 +117,11 @@ final class BatteryViewModel: ObservableObject {
             IOObjectRelease(notification)
             notification = 0
         }
+    }
+    
+    struct CapacityEntry: Identifiable {
+        let id = UUID()
+        let timestamp = Date()
+        let capacity: Int
     }
 }

@@ -1,4 +1,5 @@
 import SwiftUI
+import Charts
 
 struct BatteryView: View {
     // Create an instance of the view model that will persist for the life of the view.
@@ -34,7 +35,7 @@ struct BatteryView: View {
                                 .foregroundColor(.secondary)
                             
                             // Display the design battery capacity
-                            Text("Design Capacity: " + String(viewModel.designCapacity))
+                            Text("Design Capacity: " + String(viewModel.designCapacity) + " mAh")
                                 .font(.subheadline)
                                 .foregroundColor(.secondary)
                         }
@@ -45,11 +46,22 @@ struct BatteryView: View {
                 ProgressView(value: viewModel.level)
                     .progressViewStyle(.linear)
                     .tint(batteryColor)
+                
+                // A chart that graphs current capacity over time
+                Chart(viewModel.capacities) { entry in
+                    LineMark(
+                        x: .value("Time", entry.timestamp),
+                        y: .value("Capacity (mAh)", entry.capacity)
+                    )
+                }
+                .chartYScale(domain: 0...viewModel.maxCapacity)
+                .frame(height: 200)
+                .padding(.top, 8)
             }
             .padding(.vertical, 8)
         }
         .padding()
-        .frame(width: 300) // Give the view a fixed size
+        .frame(width: 500) // Give the view a fixed size
         .onDisappear {
             viewModel.shutDown()
         }
