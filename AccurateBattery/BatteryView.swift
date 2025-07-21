@@ -23,19 +23,19 @@ struct BatteryView: View {
                             .font(.headline)
                         
                         // Display the battery level as a percentage with two decimal place.
-                        Text(viewModel.level, format:
+                        Text(level, format:
                             .percent.precision(.fractionLength(2)))
                             .font(.subheadline)
                             .foregroundColor(.secondary)
                         
                         HStack {
                             // Display the current and max battery capacity.
-                            Text(String(viewModel.currentCapacity) + "/" + String(viewModel.maxCapacity))
+                            Text("\(currentCapacity.formatted(.number.grouping(.never).precision(.fractionLength(1))))/\(viewModel.maxCapacity) mAh")
                                 .font(.subheadline)
                                 .foregroundColor(.secondary)
                             
                             // Display the design battery capacity
-                            Text("Design Capacity: " + String(viewModel.designCapacity) + " mAh")
+                            Text("Design Capacity: \(String(viewModel.designCapacity)) mAh")
                                 .font(.subheadline)
                                 .foregroundColor(.secondary)
                         }
@@ -43,11 +43,11 @@ struct BatteryView: View {
                 }
                 
                 // A progress bar to visualize the battery level.
-                ProgressView(value: viewModel.level)
+                ProgressView(value: level)
                     .progressViewStyle(.linear)
                     .tint(batteryColor)
                 
-                // A chart that graphs current capacity over time
+                // A chart that graphs extrapolated capacity over time
                 Chart(viewModel.capacities) { entry in
                     LineMark(
                         x: .value("Time", entry.timestamp),
@@ -67,10 +67,18 @@ struct BatteryView: View {
         }
     }
     
+    private var currentCapacity: Float {
+        viewModel.capacities.last?.capacity ?? 0
+    }
+    
+    private var level: Float {
+        max(0.0, min(1.0, currentCapacity / Float(viewModel.maxCapacity)))
+    }
+    
     /// A computed property to determine the SF Symbol name for the battery icon.
     private var batteryIconName: String {
         // Round the level to the nearest 25% for the icon.
-        let levelPercentage = Int(round(viewModel.level * 100))
+        let levelPercentage = Int(round(level * 100))
         
         if viewModel.isCharging || viewModel.externalConnected {
             return "battery.100.bolt"
@@ -99,7 +107,7 @@ struct BatteryView: View {
         if viewModel.externalConnected {
             return .blue
         }
-        if viewModel.level <= 0.1 {
+        if level <= 0.1 {
             return .red
         }
         return .primary

@@ -3,15 +3,20 @@ import IOKit
 
 @MainActor
 final class BatteryViewModel: ObservableObject {
-    @Published private(set) var currentCapacity: Int = 0
+    @Published private var lastDataDate: Date = Date()
+    @Published private var lastActualCapacity: Int = 0
     @Published private(set) var maxCapacity: Int = 0
     @Published private(set) var designCapacity: Int = 0
-    @Published private(set) var level: Float = 0.0
-    @Published private(set) var state: String = "Unknown"
+    
     @Published private(set) var externalConnected: Bool = false
     @Published private(set) var isCharging: Bool = false
     @Published private(set) var fullyCharged: Bool = false
-    @Published var capacities: [CapacityEntry] = []
+    @Published private(set) var amperage: Int = 0
+    
+    @Published private(set) var state: String = "Unknown"
+    @Published private(set) var capacities: [CapacityEntry] = []
+    
+    private var extrapolationTimer: Timer?
     
     // Find the AppleSmartBattery service.
     private var service: io_service_t = IOServiceGetMatchingService(kIOMainPortDefault, IOServiceMatching("AppleSmartBattery"))
@@ -59,12 +64,17 @@ final class BatteryViewModel: ObservableObject {
         
         // Perform an initial update to populate the UI.
         updateBatteryInfo()
+        
+        extrapolationTimer = Timer.scheduledTimer(withTimeInterval: 0.1, repeats: true) { _ in
+            Task { @MainActor in
+                self.extrapolateBatteryInfo()
+            }
+        }
     }
     
     /// Reads battery properties from the I/O Registry and updates the view model.
     func updateBatteryInfo() {
         guard service != 0 else {
-            self.level = 0
             self.state = "Not Available"
             return
         }
@@ -76,23 +86,21 @@ final class BatteryViewModel: ObservableObject {
             let designCapacity = IORegistryEntryCreateCFProperty(service, "DesignCapacity" as CFString, kCFAllocatorDefault, 0)?.takeRetainedValue() as? Int,
             let externalConencted = IORegistryEntryCreateCFProperty(service, "ExternalConnected" as CFString, kCFAllocatorDefault, 0)?.takeRetainedValue() as? Bool,
             let isCharging = IORegistryEntryCreateCFProperty(service, "IsCharging" as CFString, kCFAllocatorDefault, 0)?.takeRetainedValue() as? Bool,
-            let fullyCharged = IORegistryEntryCreateCFProperty(service, "FullyCharged" as CFString, kCFAllocatorDefault, 0)?.takeRetainedValue() as? Bool
+            let fullyCharged = IORegistryEntryCreateCFProperty(service, "FullyCharged" as CFString, kCFAllocatorDefault, 0)?.takeRetainedValue() as? Bool,
+            let amperage = IORegistryEntryCreateCFProperty(service, "Amperage" as CFString, kCFAllocatorDefault, 0)?.takeRetainedValue() as? Int
         else {
-            self.level = 0
             self.state = "Error Reading Properties"
             return
         }
         
-        self.currentCapacity = currentCapacity
+        self.lastActualCapacity = currentCapacity
         self.maxCapacity = maxCapacity
         self.designCapacity = designCapacity
-        
-        // Calculate the battery level.
-        self.level = max(0.0, min(1.0, Float(currentCapacity) / Float(maxCapacity)))
         
         self.externalConnected = externalConencted
         self.isCharging = isCharging
         self.fullyCharged = fullyCharged
+        self.amperage = amperage
         
         // Determine the battery state.
         if fullyCharged {
@@ -105,7 +113,21 @@ final class BatteryViewModel: ObservableObject {
             self.state = "On Battery"
         }
         
-        capacities.append(.init(capacity: currentCapacity))
+        capacities.append(.init(capacity: Float(currentCapacity), extrapolated: false))
+        
+        lastDataDate = Date()
+    }
+    
+    func extrapolateBatteryInfo() {
+        guard isCharging else {
+            return
+        }
+        
+        let deltaTime = Date().timeIntervalSince(lastDataDate)
+        // Extrapolate capacity delta from cached amperage (in mA)
+        let deltaCapacity = Float(Double(amperage) * deltaTime / 3600.0)
+        let extrapolatedCurrentCapacity = min(Float(maxCapacity), Float(lastActualCapacity) + deltaCapacity)
+        capacities.append(.init(capacity: extrapolatedCurrentCapacity, extrapolated: true))
     }
     
     func shutDown() {
@@ -117,11 +139,16 @@ final class BatteryViewModel: ObservableObject {
             IOObjectRelease(notification)
             notification = 0
         }
+        if extrapolationTimer != nil {
+            extrapolationTimer?.invalidate()
+            extrapolationTimer = nil
+        }
     }
     
     struct CapacityEntry: Identifiable {
         let id = UUID()
         let timestamp = Date()
-        let capacity: Int
+        let capacity: Float
+        let extrapolated: Bool
     }
 }
