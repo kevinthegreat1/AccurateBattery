@@ -16,6 +16,55 @@ final class BatteryViewModel: ObservableObject {
     @Published private(set) var state: String = "Unknown"
     @Published private(set) var capacities: [CapacityEntry] = []
 
+    var currentCapacity: Float {
+        capacities.last?.capacity ?? 0
+    }
+
+    var level: Float {
+        max(0.0, min(1.0, currentCapacity / Float(maxCapacity)))
+    }
+
+    /// A computed property to determine the SF Symbol name for the battery icon.
+    var batteryIconName: String {
+        // Round the level to the nearest 25% for the icon.
+        let levelPercentage = Int(round(level * 100))
+
+        if isCharging || externalConnected {
+            return "battery.100.bolt"
+        }
+
+        switch levelPercentage {
+            case 76...100:
+                return "battery.100"
+            case 51...75:
+                return "battery.75"
+            case 26...50:
+                return "battery.50"
+            case 11...25:
+                return "battery.25"
+            default:
+                // Use a special icon for low battery
+                return "battery.0"
+        }
+    }
+
+    /// A computed property to determine the color of the icon and progress bar.
+    var batteryColor: Color {
+        if isCharging {
+            return .green
+        }
+        if externalConnected {
+            return .blue
+        }
+        if level <= 0.2 {
+            return .orange
+        }
+        if level <= 0.1 {
+            return .red
+        }
+        return .white
+    }
+
     private var extrapolationTimer: Timer?
 
     // Find the AppleSmartBattery service.
@@ -70,6 +119,14 @@ final class BatteryViewModel: ObservableObject {
                 self.extrapolateBatteryInfo()
             }
         }
+
+        // Observe app quit
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(shutDown),
+            name: NSApplication.willTerminateNotification,
+            object: nil
+        )
     }
 
     /// Reads battery properties from the I/O Registry and updates the view model.
@@ -130,7 +187,7 @@ final class BatteryViewModel: ObservableObject {
         capacities.append(.init(capacity: extrapolatedCurrentCapacity, extrapolated: true))
     }
 
-    func shutDown() {
+    @objc func shutDown() {
         if service != 0 {
             IOObjectRelease(service)
             service = 0
@@ -143,6 +200,10 @@ final class BatteryViewModel: ObservableObject {
             extrapolationTimer?.invalidate()
             extrapolationTimer = nil
         }
+    }
+
+    deinit {
+        NotificationCenter.default.removeObserver(self)
     }
 
     struct CapacityEntry: Identifiable {
