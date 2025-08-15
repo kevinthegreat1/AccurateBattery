@@ -1,10 +1,10 @@
-import SwiftUI
 import Charts
+import SwiftUI
 
 struct BatteryView: View {
     // Create an instance of the view model that will persist for the life of the view.
     @StateObject private var viewModel = BatteryViewModel()
-    
+
     var body: some View {
         // Use a GroupBox for nice visual separation.
         GroupBox("Battery Status") {
@@ -16,24 +16,23 @@ struct BatteryView: View {
                         .font(.system(size: 36))
                         .fontWeight(.light)
                         .foregroundStyle(batteryColor)
-                    
+
                     VStack(alignment: .leading) {
                         // Display the state (e.g., "Charging", "Unplugged").
                         Text(viewModel.state)
                             .font(.headline)
-                        
+
                         // Display the battery level as a percentage with two decimal place.
-                        Text(level, format:
-                            .percent.precision(.fractionLength(2)))
+                        Text(level, format: .percent.precision(.fractionLength(2)))
                             .font(.subheadline)
                             .foregroundColor(.secondary)
-                        
+
                         HStack {
                             // Display the current and max battery capacity.
                             Text("\(currentCapacity.formatted(.number.grouping(.never).precision(.fractionLength(1))))/\(viewModel.maxCapacity) mAh")
                                 .font(.subheadline)
                                 .foregroundColor(.secondary)
-                            
+
                             // Display the design battery capacity
                             Text("Design Capacity: \(String(viewModel.designCapacity)) mAh")
                                 .font(.subheadline)
@@ -41,12 +40,12 @@ struct BatteryView: View {
                         }
                     }
                 }
-                
+
                 // A progress bar to visualize the battery level.
                 ProgressView(value: level)
                     .progressViewStyle(.linear)
                     .tint(batteryColor)
-                
+
                 // A chart that graphs extrapolated capacity over time
                 Chart(viewModel.capacities) { entry in
                     LineMark(
@@ -61,29 +60,29 @@ struct BatteryView: View {
             .padding(.vertical, 8)
         }
         .padding()
-        .frame(width: 500) // Give the view a fixed size
+        .frame(width: 500)  // Give the view a fixed size
         .onDisappear {
             viewModel.shutDown()
         }
     }
-    
+
     private var currentCapacity: Float {
         viewModel.capacities.last?.capacity ?? 0
     }
-    
+
     private var level: Float {
         max(0.0, min(1.0, currentCapacity / Float(viewModel.maxCapacity)))
     }
-    
+
     /// A computed property to determine the SF Symbol name for the battery icon.
     private var batteryIconName: String {
         // Round the level to the nearest 25% for the icon.
         let levelPercentage = Int(round(level * 100))
-        
+
         if viewModel.isCharging || viewModel.externalConnected {
             return "battery.100.bolt"
         }
-        
+
         switch levelPercentage {
             case 76...100:
                 return "battery.100"
@@ -98,7 +97,7 @@ struct BatteryView: View {
                 return "battery.0"
         }
     }
-    
+
     /// A computed property to determine the color of the icon and progress bar.
     private var batteryColor: Color {
         if viewModel.isCharging {
